@@ -11,7 +11,8 @@ import           Data.Ord
 import           System.Console.ANSI
 
 -- | The main entry point.
-main :: IO ((), Snake) 
+--TODO Return Type
+main :: IO ((), Snake)
 main = do
     clearScreen
     putStrLn "Snake\n"
@@ -22,7 +23,7 @@ main = do
     bounded <- return defaultBounded
     runSnakeGame snakeTheGame width height speed length bounded
     putStrLn "Done!"
-    return ((), Snake [])
+    return ((), Snake [] R)
 
 askSetting :: String -> Int -> IO Int
 askSetting settingName defaultVal = do
@@ -59,7 +60,12 @@ snakeSettings width height speed length bounded =
         isBounded   = bounded
     }
 
-newtype Snake = Snake { getTail :: [(Int,Int)] }
+data Snake = Snake {
+    getTail :: [(Int,Int)],
+    getDirection :: Direction
+}
+
+data Direction = L | R | U | D
 
 newtype SnakeGame a = SnakeGame {
         runSnake :: ReaderT SnakeSettings (StateT Snake IO) a
@@ -70,19 +76,19 @@ newGame settings =
           undefined -- settings (runStateT snake ())
 
 -- Default snake settings
-defaultSnakeLength = 5
+defaultSnakeLength = 6
 
 -- Default board settings
-defaultBoardWidth  = 25
-defaultBoardHeight = 25
-defaultBoardSpeed  = 3
+defaultBoardWidth  = 100
+defaultBoardHeight = 100
+defaultBoardSpeed  = 5
 defaultBounded     = True
 
 runSnakeGame :: SnakeGame () -> Int -> Int -> Int -> Int -> Bool -> IO ((), Snake)
 runSnakeGame game width height speed length bounded =
     let settings  = snakeSettings width height speed length bounded
-        snake     = Snake $ zip (reverse [0..length]) $ repeat startingY
-        length    = snakeSize settings
+        snake     = Snake startingTail R
+        startingTail = zip (reverse [0..length]) $ repeat startingY
         startingY = boardHeight settings `div` 2
     in runStateT (runReaderT (runSnake game) settings) snake
 
