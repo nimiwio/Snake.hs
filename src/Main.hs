@@ -1,27 +1,28 @@
--- | Main entry point to the application.
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Main where
 
 import           Control.Monad.Reader
 import           Control.Monad.State
 import           Data.Char
+import           Data.Function
+import           Data.List
+import           Data.Ord
 import           System.Console.ANSI
 
 -- | The main entry point.
-main :: IO ()
+main :: IO ((), Snake) 
 main = do
-    putStrLn "Snake"
-    sequence_ $ replicate 5 $ putStrLn ""
+    clearScreen
+    putStrLn "Snake\n"
     width   <- askSetting "Board Width"  defaultBoardWidth
     height  <- askSetting "Board Height" defaultBoardHeight
     speed   <- askSetting "Game Speed"   defaultBoardSpeed
     length  <- askSetting "Snake Length" defaultSnakeLength
     bounded <- return defaultBounded
-    let settings = snakeSettings width height speed length bounded
-    putStr "Yo"
-    putStr "\rG"
-    clearScreen
-    putStrLn "clear"
-    --runSnakeGame $ newGame settings
+    runSnakeGame snakeTheGame width height speed length bounded
+    putStrLn "Done!"
+    return ((), Snake [])
 
 askSetting :: String -> Int -> IO Int
 askSetting settingName defaultVal = do
@@ -38,7 +39,7 @@ askSetting settingName defaultVal = do
             askSetting settingName defaultVal
 
 isInteger :: String -> Bool
-isInteger str = all isNumber str && (not $ null str)
+isInteger str = all isNumber str && not (null str)
 
 data SnakeSettings = SnakeSettings {
     boardWidth  :: Int,
@@ -60,14 +61,13 @@ snakeSettings width height speed length bounded =
 
 newtype Snake = Snake { getTail :: [(Int,Int)] }
 
-type SnakeGame = ReaderT SnakeSettings (StateT Snake IO)
+newtype SnakeGame a = SnakeGame {
+        runSnake :: ReaderT SnakeSettings (StateT Snake IO) a
+    } deriving (Monad, MonadIO, MonadReader SnakeSettings, MonadState Snake)
 
 newGame :: SnakeSettings -> SnakeGame ()
 newGame settings =
           undefined -- settings (runStateT snake ())
-    where snake     = Snake $ zip [length..0] $ repeat startingY
-          length    = snakeSize settings
-          startingY = boardHeight settings `div` 2
 
 -- Default snake settings
 defaultSnakeLength = 5
@@ -78,9 +78,40 @@ defaultBoardHeight = 25
 defaultBoardSpeed  = 3
 defaultBounded     = True
 
-runSnakeGame :: SnakeGame () -> IO ()
-runSnakeGame game = do
-    drawBoard
+runSnakeGame :: SnakeGame () -> Int -> Int -> Int -> Int -> Bool -> IO ((), Snake)
+runSnakeGame game width height speed length bounded =
+    let settings  = snakeSettings width height speed length bounded
+        snake     = Snake $ zip (reverse [0..length]) $ repeat startingY
+        length    = snakeSize settings
+        startingY = boardHeight settings `div` 2
+    in runStateT (runReaderT (runSnake game) settings) snake
 
-drawBoard :: IO ()
-drawBoard = undefined
+snakeTheGame :: SnakeGame ()
+snakeTheGame = do
+    drawBoard
+    waitForInput
+
+-- TODO make more efficient and clean up
+drawBoard :: SnakeGame ()
+drawBoard = do
+    width  <- asks boardWidth
+    height <- asks boardHeight
+    snake  <- get
+    drawHorizontalBoundary width
+    drawBody height width snake
+    drawHorizontalBoundary width
+    return ()
+    where
+        drawHorizontalBoundary width = liftIO $ replicateM_ (width + 2) drawBoundaryChar >> putStrLn ""
+        drawBody height width snake = do
+            let snakeCoords = map (sort . map fst) $ groupBy ((==) `on` snd) $ sortBy (compare `on` snd) $ getTail snake
+            mapM_ (drawLine width) snakeCoords
+        drawLine width snakeCoords = do
+            liftIO drawBoundaryChar
+            liftIO $ mapM_ ((\bool -> if bool then drawSnakeChar else putStr " ") . (`elem` snakeCoords)) [0..width-1]
+            liftIO $ drawBoundaryChar >> putStrLn ""
+        drawBoundaryChar = putStr "*"
+        drawSnakeChar = putStr "o"
+
+waitForInput :: SnakeGame ()
+waitForInput = return ()
