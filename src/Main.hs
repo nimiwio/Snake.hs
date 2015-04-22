@@ -8,6 +8,7 @@ import           Data.Char
 import           Data.Function
 import           Data.List
 import           Data.Ord
+import           GHC.Conc
 import           System.Console.ANSI
 
 -- | The main entry point.
@@ -80,7 +81,7 @@ defaultSnakeLength = 6
 
 -- Default board settings
 defaultBoardWidth  = 100
-defaultBoardHeight = 100
+defaultBoardHeight = 50
 defaultBoardSpeed  = 5
 defaultBounded     = True
 
@@ -96,10 +97,48 @@ snakeTheGame :: SnakeGame ()
 snakeTheGame = do
     drawBoard
     waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
+    drawBoard
+    waitForInput
+    updateSnake
 
 -- TODO make more efficient and clean up
 drawBoard :: SnakeGame ()
 drawBoard = do
+    liftIO clearScreen
     width  <- asks boardWidth
     height <- asks boardHeight
     snake  <- get
@@ -111,7 +150,10 @@ drawBoard = do
         drawHorizontalBoundary width = liftIO $ replicateM_ (width + 2) drawBoundaryChar >> putStrLn ""
         drawBody height width snake = do
             let snakeCoords = map (sort . map fst) $ groupBy ((==) `on` snd) $ sortBy (compare `on` snd) $ getTail snake
-            mapM_ (drawLine width) snakeCoords
+                minY = minimum $ map snd $ getTail snake
+                maxY = maximum $ map snd $ getTail snake
+                paddedCoords = replicate minY [] ++ snakeCoords ++ replicate maxY []
+            mapM_ (drawLine width) paddedCoords
         drawLine width snakeCoords = do
             liftIO drawBoundaryChar
             liftIO $ mapM_ ((\bool -> if bool then drawSnakeChar else putStr " ") . (`elem` snakeCoords)) [0..width-1]
@@ -120,4 +162,21 @@ drawBoard = do
         drawSnakeChar = putStr "o"
 
 waitForInput :: SnakeGame ()
-waitForInput = return ()
+waitForInput = liftIO $ threadDelay 100000
+
+updateSnake :: SnakeGame ()
+updateSnake = do
+    snake <- get
+    put $ moveSnake snake
+
+moveSnake :: Snake -> Snake
+moveSnake oldSnake = Snake (newHead : newTail) $ getDirection oldSnake
+    where direction = getDirection oldSnake
+          snakeTail = getTail oldSnake
+          (x, y)    = head snakeTail
+          newTail   = init snakeTail
+          newHead   = case direction of
+                         R -> (x+1, y)
+                         L -> (x-1, y)
+                         U -> (x, y+1)
+                         D -> (x, y-1)
