@@ -95,45 +95,14 @@ runSnakeGame game width height speed length bounded =
 
 snakeTheGame :: SnakeGame ()
 snakeTheGame = do
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
-    drawBoard
-    waitForInput
-    updateSnake
+    liftIO $ putStrLn "Here we go!"
+    tick 20
+    snake <- get
+    put $ Snake (getTail snake) U
+    tick 50
+    return ()
+        where tick n = replicateM_ n $ sequence [drawBoard, waitForInput, updateSnake]
+    
 
 -- TODO make more efficient and clean up
 drawBoard :: SnakeGame ()
@@ -142,7 +111,7 @@ drawBoard = do
     width  <- asks boardWidth
     height <- asks boardHeight
     snake  <- get
-    liftIO $ let newBoard = (drawHorizontalBoundary width) ++ (drawBody height width snake) ++ (drawHorizontalBoundary width)
+    liftIO $ let newBoard = drawHorizontalBoundary width ++ drawBody height width snake ++ drawHorizontalBoundary width
              in seq newBoard $ putStr newBoard
     return ()
     where
