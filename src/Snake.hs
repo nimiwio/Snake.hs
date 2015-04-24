@@ -19,12 +19,19 @@ main = do
     putStrLn "Snake\n"
     width   <- askSetting "Board Width"  defaultBoardWidth
     height  <- askSetting "Board Height" defaultBoardHeight
-    speed   <- askSetting "Game Speed"   defaultBoardSpeed
+    speed   <- askSetting "Game Speed (1-10)"   defaultBoardSpeed
     length  <- askSetting "Snake Length" defaultSnakeLength
     bounded <- return defaultBounded
-    runSnakeGame snakeTheGame width height speed length bounded
+    runSnakeGame
+        snakeTheGame
+        (defaultRange width       10 1000           )
+        (defaultRange height      10 1000           )
+        (defaultRange (speed - 1) 0  9              )
+        (defaultRange length      1  (width `div` 6))
+        bounded
     putStrLn "Done!"
     return ((), Snake [] R (0,0))
+        where defaultRange n minVal maxVal = max minVal $ min maxVal n 
 
 askSetting :: String -> Int -> IO Int
 askSetting settingName defaultVal = do
@@ -96,14 +103,17 @@ runSnakeGame game width height speed length bounded =
 
 snakeTheGame :: SnakeGame ()
 snakeTheGame = do
-    liftIO $ putStrLn "Here we go!"
-    tick 20
-    snake <- get
-    put $ Snake (getTail snake) U (getCritter snake)
-    tick 50
-    return ()
-        where tick n = replicateM_ n $ sequence [drawBoard, waitForInput, updateSnake]
-    
+    tick 20 R
+    tick 10 U
+    tick 5 L
+    tick 2 U
+    tick 3 R
+    tick 10 D
+        where
+            tick n dir = do
+                snake <- get
+                put $ Snake (getTail snake) dir (getCritter snake)
+                replicateM_ n $ sequence [drawBoard, waitForInput, updateSnake]
 
 -- TODO make more efficient and clean up
 drawBoard :: SnakeGame ()
@@ -121,7 +131,7 @@ drawBoard = do
             let snakeCoords = map (sort . map fst) $ groupBy ((==) `on` snd) $ sortBy (compare `on` snd) $ getTail snake
                 minY = minimum $ map snd $ getTail snake
                 maxY = maximum $ map snd $ getTail snake
-                paddedCoords = replicate minY [] ++ snakeCoords ++ replicate maxY []
+                paddedCoords = replicate minY [] ++ snakeCoords ++ replicate (height - maxY) []
             in concatMap (drawLine width) paddedCoords
         drawLine width snakeCoords =
             [boundaryChar] ++
@@ -132,12 +142,17 @@ drawBoard = do
         snakeChar = 'o'
 
 waitForInput :: SnakeGame ()
-waitForInput = liftIO $ threadDelay 100000
+waitForInput = do
+    speed <- asks gameSpeed
+    liftIO $ threadDelay (baseSpeed * (10 - speed) )
+        where baseSpeed = 20000
 
 updateSnake :: SnakeGame ()
 updateSnake = do
     snake <- get
     put $ moveSnake snake
+    newHead <- gets $ head . getTail
+    return ()
 
 moveSnake :: Snake -> Snake
 moveSnake oldSnake = Snake (newHead : newTail) (getDirection oldSnake) (getCritter oldSnake)
@@ -148,5 +163,5 @@ moveSnake oldSnake = Snake (newHead : newTail) (getDirection oldSnake) (getCritt
           newHead   = case direction of
                          R -> (x+1, y)
                          L -> (x-1, y)
-                         U -> (x, y+1)
-                         D -> (x, y-1)
+                         U -> (x, y-1)
+                         D -> (x, y+1)
