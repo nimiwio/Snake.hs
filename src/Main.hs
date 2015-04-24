@@ -142,24 +142,24 @@ drawBoard = do
     width  <- asks boardWidth
     height <- asks boardHeight
     snake  <- get
-    drawHorizontalBoundary width
-    drawBody height width snake
-    drawHorizontalBoundary width
+    liftIO $ let newBoard = (drawHorizontalBoundary width) ++ (drawBody height width snake) ++ (drawHorizontalBoundary width)
+             in seq newBoard $ putStr newBoard
     return ()
     where
-        drawHorizontalBoundary width = liftIO $ replicateM_ (width + 2) drawBoundaryChar >> putStrLn ""
-        drawBody height width snake = do
+        drawHorizontalBoundary width = replicate (width + 2) boundaryChar ++ "\n"
+        drawBody height width snake =
             let snakeCoords = map (sort . map fst) $ groupBy ((==) `on` snd) $ sortBy (compare `on` snd) $ getTail snake
                 minY = minimum $ map snd $ getTail snake
                 maxY = maximum $ map snd $ getTail snake
                 paddedCoords = replicate minY [] ++ snakeCoords ++ replicate maxY []
-            mapM_ (drawLine width) paddedCoords
-        drawLine width snakeCoords = do
-            liftIO drawBoundaryChar
-            liftIO $ mapM_ ((\bool -> if bool then drawSnakeChar else putStr " ") . (`elem` snakeCoords)) [0..width-1]
-            liftIO $ drawBoundaryChar >> putStrLn ""
-        drawBoundaryChar = putStr "*"
-        drawSnakeChar = putStr "o"
+            in concatMap (drawLine width) paddedCoords
+        drawLine width snakeCoords =
+            [boundaryChar] ++
+            map ((\bool -> if bool then snakeChar else ' ') . (`elem` snakeCoords)) [0..width-1] ++
+            [boundaryChar] ++
+            "\n"
+        boundaryChar = '*'
+        snakeChar = 'o'
 
 waitForInput :: SnakeGame ()
 waitForInput = liftIO $ threadDelay 100000
