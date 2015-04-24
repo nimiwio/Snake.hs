@@ -24,7 +24,7 @@ main = do
     bounded <- return defaultBounded
     runSnakeGame snakeTheGame width height speed length bounded
     putStrLn "Done!"
-    return ((), Snake [] R)
+    return ((), Snake [] R (0,0))
 
 askSetting :: String -> Int -> IO Int
 askSetting settingName defaultVal = do
@@ -63,7 +63,8 @@ snakeSettings width height speed length bounded =
 
 data Snake = Snake {
     getTail :: [(Int,Int)],
-    getDirection :: Direction
+    getDirection :: Direction,
+    getCritter :: (Int, Int)
 }
 
 data Direction = L | R | U | D
@@ -88,7 +89,7 @@ defaultBounded     = True
 runSnakeGame :: SnakeGame () -> Int -> Int -> Int -> Int -> Bool -> IO ((), Snake)
 runSnakeGame game width height speed length bounded =
     let settings  = snakeSettings width height speed length bounded
-        snake     = Snake startingTail R
+        snake     = Snake startingTail R (boardHeight settings `div` 2, boardWidth settings `div` 2)
         startingTail = zip (reverse [0..length]) $ repeat startingY
         startingY = boardHeight settings `div` 2
     in runStateT (runReaderT (runSnake game) settings) snake
@@ -98,7 +99,7 @@ snakeTheGame = do
     liftIO $ putStrLn "Here we go!"
     tick 20
     snake <- get
-    put $ Snake (getTail snake) U
+    put $ Snake (getTail snake) U (getCritter snake)
     tick 50
     return ()
         where tick n = replicateM_ n $ sequence [drawBoard, waitForInput, updateSnake]
@@ -139,7 +140,7 @@ updateSnake = do
     put $ moveSnake snake
 
 moveSnake :: Snake -> Snake
-moveSnake oldSnake = Snake (newHead : newTail) $ getDirection oldSnake
+moveSnake oldSnake = Snake (newHead : newTail) (getDirection oldSnake) (getCritter oldSnake)
     where direction = getDirection oldSnake
           snakeTail = getTail oldSnake
           (x, y)    = head snakeTail
