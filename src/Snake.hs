@@ -105,7 +105,13 @@ runSnakeGame game width height speed length bounded =
     in runStateT (runReaderT (runSnake game) settings) snake
 
 snakeTheGame :: SnakeGame ()
-snakeTheGame = do
+snakeTheGame = forever $ do
+  drawBoard
+  waitForInput
+  updateSnake
+
+snakeTestGame :: SnakeGame ()
+snakeTestGame = do
     tick 20 R
     tick 10 U
     tick 5 L
@@ -151,7 +157,7 @@ waitForInput = do
     newSnake <- liftIO $ do
       key <- newEmptyMVar
       putMVar key Nothing
-      thread <- forkIO $ getSingleChar key
+      thread <- forkIO $ forever $ getSingleChar key
       threadDelay (baseSpeed * (10 - speed) )
       killThread thread
       input <- takeMVar key
@@ -163,7 +169,7 @@ waitForInput = do
       where baseSpeed = 20000
 
 getSingleChar :: MVar (Maybe Char) -> IO ()
-getSingleChar key = do
+getSingleChar key = forever $ do
   inChar <- getChar
   modifyMVar_ key $ const $ return $ Just inChar
 
