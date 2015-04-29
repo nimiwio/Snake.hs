@@ -127,7 +127,7 @@ snakeTestGame = do
 -- TODO make more efficient and clean up
 drawBoard :: SnakeGame ()
 drawBoard = do
-    liftIO clearScreen
+    liftIO $ clearScreen >> putStrLn ""
     width  <- asks boardWidth
     height <- asks boardHeight
     snake  <- get
