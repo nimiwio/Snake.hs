@@ -2,6 +2,7 @@
 
 module Main where
 
+import           Control.Concurrent
 import           Control.Monad.Reader
 import           Control.Monad.State
 import           Data.Char
@@ -10,11 +11,13 @@ import           Data.List
 import           Data.Ord
 import           GHC.Conc
 import           System.Console.ANSI
+import           System.IO
 
 -- | The main entry point.
 --TODO Return Type
 main :: IO ((), Snake)
 main = do
+    hSetBuffering stdin NoBuffering
     clearScreen
     putStrLn "Snake\n"
     width   <- askSetting "Board Width"  defaultBoardWidth
@@ -31,7 +34,7 @@ main = do
         bounded
     putStrLn "Done!"
     return ((), Snake [] R (0,0))
-        where defaultRange n minVal maxVal = max minVal $ min maxVal n 
+        where defaultRange n minVal maxVal = max minVal $ min maxVal n
 
 askSetting :: String -> Int -> IO Int
 askSetting settingName defaultVal = do
@@ -144,8 +147,34 @@ drawBoard = do
 waitForInput :: SnakeGame ()
 waitForInput = do
     speed <- asks gameSpeed
-    liftIO $ threadDelay (baseSpeed * (10 - speed) )
-        where baseSpeed = 20000
+    snake <- get
+    newSnake <- liftIO $ do
+      key <- newEmptyMVar
+      putMVar key Nothing
+      thread <- forkIO $ getSingleChar key
+      threadDelay (baseSpeed * (10 - speed) )
+      killThread thread
+      input <- takeMVar key
+      case inputDirection input of
+        Nothing -> return snake
+        --TODO make this work: Just dir -> return $ snake {getDirection = dir}
+        Just dir -> return $ Snake (getTail snake) dir (getCritter snake)
+    put newSnake
+      where baseSpeed = 20000
+
+getSingleChar :: MVar (Maybe Char) -> IO ()
+getSingleChar key = do
+  inChar <- getChar
+  modifyMVar_ key $ const $ return $ Just inChar
+
+inputDirection :: Maybe Char -> Maybe Direction
+inputDirection (Just c) = case c of
+    'w' -> Just U
+    'a' -> Just L
+    's' -> Just D
+    'd' -> Just R
+    _ -> Nothing
+inputDirection _ = Nothing
 
 updateSnake :: SnakeGame ()
 updateSnake = do
@@ -165,3 +194,4 @@ moveSnake oldSnake = Snake (newHead : newTail) (getDirection oldSnake) (getCritt
                          L -> (x-1, y)
                          U -> (x, y-1)
                          D -> (x, y+1)
+
