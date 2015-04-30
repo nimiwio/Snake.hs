@@ -137,10 +137,22 @@ drawBoard = do
     where
         drawHorizontalBoundary width = replicate (width + 2) boundaryChar ++ "\n"
         drawBody height width snake =
-            let snakeCoords = map (sort . map fst) $ groupBy ((==) `on` snd) $ sortBy (compare `on` snd) $ getTail snake
-                minY = minimum $ map snd $ getTail snake
-                maxY = maximum $ map snd $ getTail snake
-                paddedCoords = replicate minY [] ++ snakeCoords ++ replicate (height - maxY) []
+                -- snake Coordinates grouped by y-coordinate, sorted by ascending x-coordinate
+            let groupedCoords = groupBy ((==) `on` snd) $ sortBy (compare `on` snd) $ getTail snake
+                minY = snd . head . head $ groupedCoords
+                maxY = snd . head . last $ groupedCoords
+                coordsNoMiddleGaps = snd $ foldl' padCoords (minY ,[]) groupedCoords 
+                snakeCoords = map (sort . map fst) coordsNoMiddleGaps
+                -- TODO arrow here?
+                -- TODO right fold
+                -- FIXME Snake disappears when movind horizontally and crossing vertical border (span top/bottom)
+                padCoords (n, coords) xs@((_,y):_) = if n /= y then
+                                                             (y+1, coords ++ replicate (y - n + 1) [])
+                                                          else
+                                                             (n+1, coords ++ [xs])
+                                                              
+                -- padCoords (n, coords) _ = (n+1, coords ++ [[]])
+                paddedCoords = replicate minY [] ++ snakeCoords ++ replicate (height - maxY - 1) []
             in concatMap (drawLine width) paddedCoords
         drawLine width snakeCoords =
             [boundaryChar] ++
