@@ -179,25 +179,47 @@ inputDirection (Just c) = case c of
     'a' -> Just L
     's' -> Just D
     'd' -> Just R
+    -- TODO Add support for arrow Keys
     _ -> Nothing
 inputDirection _ = Nothing
 
+-- TODO split this into a few fcts
 updateSnake :: SnakeGame ()
 updateSnake = do
-    snake <- get
-    put $ moveSnake snake
-    newHead <- gets $ head . getTail
+    snake <- gets getTail
+    direction <- gets getDirection
+    critter <- gets getCritter
+    xBound <- asks boardWidth
+    yBound <- asks boardHeight
+    let snakeHead@(x, y) = head snake
+        ateCritter       = snakeHead == critter
+        newTail          = if ateCritter
+                           then snake
+                           else init snake
+        newHead          = case direction of
+                      R -> ((x+1) `rem` xBound, y)
+                      L -> ((x-1) `mod` xBound, y)
+                      U -> (x, (y-1) `mod` yBound)
+                      D -> (x, (y+1) `rem` yBound)
+        newCritter = if ateCritter then
+                        genNewCritter
+                     else   
+                        critter
+    -- TODO record update syntax
+    put $ Snake (newHead : newTail) direction newCritter
     return ()
 
-moveSnake :: Snake -> Snake
-moveSnake oldSnake = Snake (newHead : newTail) (getDirection oldSnake) (getCritter oldSnake)
-    where direction = getDirection oldSnake
-          snakeTail = getTail oldSnake
-          (x, y)    = head snakeTail
-          newTail   = init snakeTail
-          newHead   = case direction of
-                         R -> (x+1, y)
-                         L -> (x-1, y)
-                         U -> (x, y-1)
-                         D -> (x, y+1)
+genNewCritter = (2,2)
+
+--moveSnake :: Snake -> Snake 
+--moveSnake oldSnake = Snake (newHead : newTail) (getDirection oldSnake) (getCritter oldSnake)
+--    where direction = getDirection oldSnake
+--          snakeTail = getTail oldSnake
+--          (x, y)    = head snakeTail
+--          newTail   = init snakeTail
+--          newHead   = case direction of
+--                         R -> (x+1, y)
+--                         L -> (x-1, y)
+--                         U -> (x, y-1)
+--                         D -> (x, y+1)
 
