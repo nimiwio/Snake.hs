@@ -154,11 +154,11 @@ drawBoard = do
                 -- padCoords (n, coords) _ = (n+1, coords ++ [[]])
                 paddedCoords = replicate minY [] ++ snakeCoords ++ replicate (height - maxY - 1) []
             in concatMap (drawLine width) paddedCoords
--       drawLine width snakeCoords =
--            [boundaryChar] ++
--            map ((\bool -> if bool then snakeChar else ' ') . (`elem` snakeCoords)) [0..width-1] ++
--            [boundaryChar] ++
--            "\n"
+        drawLine width snakeCoords =
+            [boundaryChar] ++
+            map ((\bool -> if bool then snakeChar else ' ') . (`elem` snakeCoords)) [0..width-1] ++
+            [boundaryChar] ++
+            "\n"
         boundaryChar = '*'
         snakeChar = 'o'
 
