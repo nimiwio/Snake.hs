@@ -154,14 +154,11 @@ drawBoard = do
                 -- padCoords (n, coords) _ = (n+1, coords ++ [[]])
                 paddedCoords = replicate minY [] ++ snakeCoords ++ replicate (height - maxY - 1) []
             in concatMap (drawLine width) paddedCoords
-        drawLine width snakeCoords critterX =
-            let line = map getBoardChar [0..width-1]
-                getBoardChar n = if n `elem` snakeCoords
-                                 then snakeChar
-                                 else if (-n) `elem snakeCoords
-      (\bool -> if bool then snakeChar else ' ')
-            in [boundaryChar] ++ line ++ [boundaryChar] ++ "\n"
-
+-       drawLine width snakeCoords =
+-            [boundaryChar] ++
+-            map ((\bool -> if bool then snakeChar else ' ') . (`elem` snakeCoords)) [0..width-1] ++
+-            [boundaryChar] ++
+-            "\n"
         boundaryChar = '*'
         snakeChar = 'o'
 
