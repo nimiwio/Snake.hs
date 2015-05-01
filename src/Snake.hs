@@ -141,7 +141,7 @@ drawBoard = do
             let groupedCoords = groupBy ((==) `on` snd) $ sortBy (compare `on` snd) $ getTail snake
                 minY = snd . head . head $ groupedCoords
                 maxY = snd . head . last $ groupedCoords
-                coordsNoMiddleGaps = snd $ foldl' padCoords (minY ,[]) groupedCoords 
+                coordsNoMiddleGaps = snd $ foldl' padCoords (minY ,[]) groupedCoords
                 snakeCoords = map (sort . map fst) coordsNoMiddleGaps
                 -- TODO arrow here?
                 -- TODO right fold
@@ -150,15 +150,18 @@ drawBoard = do
                                                              (y+1, coords ++ replicate (y - n + 1) [])
                                                           else
                                                              (n+1, coords ++ [xs])
-                                                              
+
                 -- padCoords (n, coords) _ = (n+1, coords ++ [[]])
                 paddedCoords = replicate minY [] ++ snakeCoords ++ replicate (height - maxY - 1) []
             in concatMap (drawLine width) paddedCoords
-        drawLine width snakeCoords =
-            [boundaryChar] ++
-            map ((\bool -> if bool then snakeChar else ' ') . (`elem` snakeCoords)) [0..width-1] ++
-            [boundaryChar] ++
-            "\n"
+        drawLine width snakeCoords critterX =
+            let line = map getBoardChar [0..width-1]
+                getBoardChar n = if n `elem` snakeCoords
+                                 then snakeChar
+                                 else if (-n) `elem snakeCoords
+      (\bool -> if bool then snakeChar else ' ')
+            in [boundaryChar] ++ line ++ [boundaryChar] ++ "\n"
+
         boundaryChar = '*'
         snakeChar = 'o'
 
@@ -215,7 +218,7 @@ updateSnake = do
                       D -> (x, (y+1) `rem` yBound)
         newCritter = if ateCritter then
                         genNewCritter
-                     else   
+                     else
                         critter
     -- TODO record update syntax
     put $ Snake (newHead : newTail) direction newCritter
@@ -223,7 +226,7 @@ updateSnake = do
 
 genNewCritter = (2,2)
 
---moveSnake :: Snake -> Snake 
+--moveSnake :: Snake -> Snake
 --moveSnake oldSnake = Snake (newHead : newTail) (getDirection oldSnake) (getCritter oldSnake)
 --    where direction = getDirection oldSnake
 --          snakeTail = getTail oldSnake
