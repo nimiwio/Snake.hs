@@ -12,6 +12,7 @@ import           Data.Ord
 import           GHC.Conc
 import           System.Console.ANSI
 import           System.IO
+import           System.Random
 
 -- | The main entry point.
 --TODO Return Type
@@ -99,7 +100,7 @@ defaultBounded     = True
 runSnakeGame :: SnakeGame () -> Int -> Int -> Int -> Int -> Bool -> IO ((), Snake)
 runSnakeGame game width height speed length bounded =
     let settings  = snakeSettings width height speed length bounded
-        snake     = Snake startingTail R (boardHeight settings `div` 2, boardWidth settings `div` 2)
+        snake     = Snake startingTail R (boardWidth settings `div` 2, boardHeight settings `div` 2)
         startingTail = zip (reverse [0..length]) $ repeat startingY
         startingY = boardHeight settings `div` 2
     in runStateT (runReaderT (runSnake game) settings) snake
@@ -145,22 +146,26 @@ drawBoard = do
                 snakeCoords = map (sort . map fst) coordsNoMiddleGaps
                 -- TODO arrow here?
                 -- TODO right fold
-                -- FIXME Snake disappears when movind horizontally and crossing vertical border (span top/bottom)
+                -- FIXME Snake disappears when moving horizontally and crossing vertical border (span top/bottom)
                 padCoords (n, coords) xs@((_,y):_) = if n /= y then
                                                              (y+1, coords ++ replicate (y - n + 1) [])
                                                           else
                                                              (n+1, coords ++ [xs])
-
-                -- padCoords (n, coords) _ = (n+1, coords ++ [[]])
                 paddedCoords = replicate minY [] ++ snakeCoords ++ replicate (height - maxY - 1) []
-            in concatMap (drawLine width) paddedCoords
-        drawLine width snakeCoords =
-            [boundaryChar] ++
-            map ((\bool -> if bool then snakeChar else ' ') . (`elem` snakeCoords)) [0..width-1] ++
-            [boundaryChar] ++
-            "\n"
+                critter = getCritter snake
+            in concatMap (drawLine width critter) $ zip [0..] paddedCoords
+        drawLine width critter snakeCoords =
+            let boardChar n
+                 | n `elem` snd snakeCoords = snakeChar 
+                 | fst snakeCoords == snd critter && n == fst critter = critterChar 
+                 | otherwise = ' '
+            in
+              boundaryChar :
+              map boardChar [0..width-1] ++
+              boundaryChar : "\n"
         boundaryChar = '*'
         snakeChar = 'o'
+        critterChar = '#'
 
 waitForInput :: SnakeGame ()
 waitForInput = do
@@ -213,15 +218,19 @@ updateSnake = do
                       L -> ((x-1) `mod` xBound, y)
                       U -> (x, (y-1) `mod` yBound)
                       D -> (x, (y+1) `rem` yBound)
-        newCritter = if ateCritter then
-                        genNewCritter
+    newCritter <- liftIO $ if ateCritter then
+                        genNewCritter (xBound - 1) (yBound - 1)
                      else
-                        critter
+                        return critter
     -- TODO record update syntax
     put $ Snake (newHead : newTail) direction newCritter
     return ()
 
-genNewCritter = (2,2)
+genNewCritter width height = do
+   x <- randomRIO(0, width)
+   y <- randomRIO(0, height)
+   return (x, y)
+
 
 --moveSnake :: Snake -> Snake
 --moveSnake oldSnake = Snake (newHead : newTail) (getDirection oldSnake) (getCritter oldSnake)
